@@ -4,43 +4,106 @@ import numpy as np
 import plotly.express as px
 
 # ==========================================================
-# CONFIGURATION PAGE
+# CONFIGURATION
 # ==========================================================
 
 st.set_page_config(
-    page_title="Analyse de Portefeuille Obligataire",
+    page_title="Analyse Portefeuille Obligataire",
     page_icon="📈",
     layout="wide"
 )
 
 # ==========================================================
-# CHARGEMENT DES DONNEES
+# CHARGEMENT DATA
 # ==========================================================
 
 @st.cache_data
-def load_data(file_path):
-    try:
-        df = pd.read_excel(file_path)
+def load_data(path):
 
-        # Nettoyage des noms de colonnes
+    try:
+
+        df = pd.read_excel(path)
+
+        # nettoyage colonnes
         df.columns = df.columns.str.strip()
 
         return df
 
-    except FileNotFoundError:
-        st.error(f"Fichier introuvable : {file_path}")
-        return pd.DataFrame()
-
     except Exception as e:
-        st.error(f"Erreur lors du chargement : {e}")
+
+        st.error(f"Erreur chargement Excel : {e}")
+
         return pd.DataFrame()
 
-
-excel_file = "Data_obligations_cleaned.xlsx"
-df = load_data(excel_file)
 
 # ==========================================================
-# CONTROLES DE COHERENCE
+# BENCHMARK SYNTHETIQUE
+# ==========================================================
+
+@st.cache_data
+def generate_benchmark():
+
+    np.random.seed(42)
+
+    dates = pd.date_range(
+        start="2022-01-31",
+        periods=24,
+        freq="ME"
+    )
+
+    return pd.DataFrame({
+        "Date": dates,
+        "MBI Index":
+            100 + np.cumsum(
+                np.random.normal(0.15, 0.40, 24)
+            ),
+        "Performance Portefeuille":
+            100 + np.cumsum(
+                np.random.normal(0.20, 0.50, 24)
+            )
+    })
+
+
+# ==========================================================
+# HISTORIQUE SYNTHETIQUE
+# ==========================================================
+
+@st.cache_data
+def generate_history():
+
+    np.random.seed(7)
+
+    dates = pd.date_range(
+        start="2021-01-31",
+        periods=36,
+        freq="ME"
+    )
+
+    return pd.DataFrame({
+        "Date": dates,
+        "TRA Moyen":
+            0.03 + np.cumsum(
+                np.random.normal(0, 0.0004, 36)
+            ),
+        "Duration Moyenne":
+            5 + np.cumsum(
+                np.random.normal(0, 0.05, 36)
+            )
+    })
+
+
+# ==========================================================
+# CHARGEMENT
+# ==========================================================
+
+df = load_data("Data_obligations_cleaned.xlsx")
+
+df_benchmark = generate_benchmark()
+
+df_history = generate_history()
+
+# ==========================================================
+# CONTROLE
 # ==========================================================
 
 required_columns = [
@@ -52,54 +115,18 @@ required_columns = [
 
 if not df.empty:
 
-    missing_cols = [
-        col for col in required_columns
-        if col not in df.columns
+    missing = [
+        c for c in required_columns
+        if c not in df.columns
     ]
 
-    if missing_cols:
+    if missing:
+
         st.error(
-            f"Colonnes manquantes dans le fichier Excel : {missing_cols}"
+            f"Colonnes manquantes : {missing}"
         )
+
         st.stop()
-
-# ==========================================================
-# DONNEES SYNTHETIQUES BENCHMARK
-# ==========================================================
-
-dates = pd.date_range(
-    start="2022-01-31",
-    periods=24,
-    freq="ME"
-)
-
-np.random.seed(42)
-
-df_benchmark = pd.DataFrame({
-    "Date": dates,
-    "MBI Index":
-        100 + np.cumsum(np.random.normal(0.15, 0.4, 24)),
-    "Performance Portefeuille":
-        100 + np.cumsum(np.random.normal(0.20, 0.50, 24))
-})
-
-# ==========================================================
-# DONNEES HISTORIQUES SYNTHETIQUES
-# ==========================================================
-
-dates_history = pd.date_range(
-    start="2021-01-31",
-    periods=36,
-    freq="ME"
-)
-
-df_history = pd.DataFrame({
-    "Date": dates_history,
-    "TRA Moyen":
-        0.03 + np.cumsum(np.random.normal(0, 0.0005, 36)),
-    "Duration Moyenne":
-        5 + np.cumsum(np.random.normal(0, 0.05, 36))
-})
 
 # ==========================================================
 # TITRE
@@ -108,10 +135,7 @@ df_history = pd.DataFrame({
 st.title("📈 Analyse de Portefeuille Obligataire")
 
 st.markdown(
-    """
-    Plateforme de suivi, visualisation et stress testing
-    d'un portefeuille obligataire.
-    """
+    "Suivi, pilotage et stress testing du portefeuille."
 )
 
 # ==========================================================
@@ -123,22 +147,24 @@ st.sidebar.header("Filtres")
 if not df.empty:
 
     classifications = sorted(
-        df["Classification"].dropna().unique()
+        df["Classification"]
+        .dropna()
+        .unique()
     )
 
-    selected_classifications = st.sidebar.multiselect(
+    selected = st.sidebar.multiselect(
         "Classification",
         classifications,
         default=classifications
     )
 
     filtered_df = df[
-        df["Classification"].isin(
-            selected_classifications
-        )
+        df["Classification"]
+        .isin(selected)
     ].copy()
 
 else:
+
     filtered_df = pd.DataFrame()
 
 # ==========================================================
@@ -146,142 +172,138 @@ else:
 # ==========================================================
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "💸 Tableau de bord",
-    "📊 Benchmarking",
+    "💸 Dashboard",
+    "📊 Benchmark",
     "📉 Concentration",
     "💵 Stress Test",
     "📅 Historique"
 ])
 
 # ==========================================================
-# TAB 1 : DASHBOARD EXECUTIF
+# DASHBOARD
 # ==========================================================
 
 with tab1:
 
-    st.header("Tableau de Bord Exécutif")
+    st.header("Tableau de Bord")
 
     if not filtered_df.empty:
 
-        total_nominal = filtered_df[
-            "Nominal Global Restant"
-        ].sum()
+        total_nominal = (
+            filtered_df["Nominal Global Restant"]
+            .sum()
+        )
 
-        nb_lignes = len(filtered_df)
+        avg_duration = (
+            filtered_df["Duration"]
+            .mean()
+        )
 
-        duration_moyenne = filtered_df[
-            "Duration"
-        ].mean()
+        avg_tra = (
+            filtered_df["TRA"]
+            .mean()
+        )
 
-        tra_moyen = filtered_df[
-            "TRA"
-        ].mean()
+        nb_titres = len(filtered_df)
 
-        col1, col2, col3, col4 = st.columns(4)
+        c1, c2, c3, c4 = st.columns(4)
 
-        col1.metric(
-            "Nominal Global",
+        c1.metric(
+            "Nominal Total",
             f"{total_nominal:,.0f} MAD"
         )
 
-        col2.metric(
-            "Nombre de lignes",
-            f"{nb_lignes}"
+        c2.metric(
+            "Nombre de titres",
+            nb_titres
         )
 
-        col3.metric(
-            "Duration moyenne",
-            f"{duration_moyenne:.2f} ans"
+        c3.metric(
+            "Duration Moyenne",
+            f"{avg_duration:.2f}"
         )
 
-        col4.metric(
-            "TRA moyen",
-            f"{tra_moyen:.2%}"
+        c4.metric(
+            "TRA Moyen",
+            f"{avg_tra:.2%}"
         )
 
-        st.divider()
+        col1, col2 = st.columns(2)
 
-        colA, colB = st.columns(2)
+        with col1:
 
-        with colA:
-
-            repartition = (
+            pie_data = (
                 filtered_df["Classification"]
                 .value_counts()
                 .reset_index()
             )
 
-            repartition.columns = [
+            pie_data.columns = [
                 "Classification",
                 "Nombre"
             ]
 
-            fig = px.pie(
-                repartition,
+            fig1 = px.pie(
+                pie_data,
                 names="Classification",
                 values="Nombre",
-                title="Répartition par Classification"
+                title="Répartition Classification"
             )
 
             st.plotly_chart(
-                fig,
-                use_container_width=True
+                fig1,
+                use_container_width=True,
+                key="pie_classification"
             )
 
-        with colB:
+        with col2:
 
-            nominal_class = (
-                filtered_df
-                .groupby("Classification")
-                ["Nominal Global Restant"]
+            bar_data = (
+                filtered_df.groupby(
+                    "Classification"
+                )["Nominal Global Restant"]
                 .sum()
                 .reset_index()
             )
 
-            fig = px.bar(
-                nominal_class,
+            fig2 = px.bar(
+                bar_data,
                 x="Classification",
                 y="Nominal Global Restant",
                 title="Nominal par Classification"
             )
 
             st.plotly_chart(
-                fig,
-                use_container_width=True
+                fig2,
+                use_container_width=True,
+                key="bar_nominal"
             )
 
-    else:
-        st.warning("Aucune donnée disponible.")
-
 # ==========================================================
-# TAB 2 : BENCHMARK
+# BENCHMARK
 # ==========================================================
 
 with tab2:
 
     st.header("Benchmarking")
 
-    fig = px.line(
+    fig_benchmark = px.line(
         df_benchmark,
         x="Date",
         y=[
             "MBI Index",
             "Performance Portefeuille"
-        ],
-        title="Portefeuille vs MBI",
-        labels={
-            "value": "Niveau d'indice",
-            "variable": "Série"
-        }
+        ]
     )
 
     st.plotly_chart(
-        fig,
-        use_container_width=True
+        fig_benchmark,
+        use_container_width=True,
+        key="benchmark"
     )
 
 # ==========================================================
-# TAB 3 : CONCENTRATION
+# CONCENTRATION
 # ==========================================================
 
 with tab3:
@@ -289,12 +311,14 @@ with tab3:
     st.header("Analyse de Concentration")
 
     if (
-        not filtered_df.empty
-        and "Périodicité Coupon" in filtered_df.columns
+        "Périodicité Coupon"
+        in filtered_df.columns
     ):
 
         concentration = (
-            filtered_df["Périodicité Coupon"]
+            filtered_df[
+                "Périodicité Coupon"
+            ]
             .value_counts(normalize=True)
             .reset_index()
         )
@@ -304,30 +328,25 @@ with tab3:
             "Poids"
         ]
 
-        fig = px.bar(
+        fig3 = px.bar(
             concentration,
             x="Périodicité Coupon",
-            y="Poids",
-            title="Concentration des Coupons"
+            y="Poids"
         )
 
         st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-    else:
-        st.warning(
-            "Colonne Périodicité Coupon indisponible."
+            fig3,
+            use_container_width=True,
+            key="concentration_coupon"
         )
 
 # ==========================================================
-# TAB 4 : STRESS TEST
+# STRESS TEST
 # ==========================================================
 
 with tab4:
 
-    st.header("Stress Testing de Taux")
+    st.header("Stress Test")
 
     if not filtered_df.empty:
 
@@ -342,7 +361,7 @@ with tab4:
         shock = shock_bp / 10000
 
         st.metric(
-            "Variation appliquée",
+            "Choc appliqué",
             f"{shock_bp} bps"
         )
 
@@ -355,27 +374,34 @@ with tab4:
 
             scenario_df["Prix Simulé"] = (
                 scenario_df["Prix Unitaire"]
-                * (
+                *
+                (
                     1
                     - scenario_df["Sensibilité"]
                     * shock
                 )
             )
 
-            st.dataframe(
-                scenario_df[
-                    [
-                        "Code",
-                        "Prix Unitaire",
-                        "Prix Simulé",
-                        "Sensibilité"
-                    ]
+            cols = [
+                c
+                for c in [
+                    "Code",
+                    "Prix Unitaire",
+                    "Prix Simulé",
+                    "Sensibilité"
                 ]
+                if c in scenario_df.columns
+            ]
+
+            st.dataframe(
+                scenario_df[cols],
+                use_container_width=True
             )
 
             impact = (
                 scenario_df["Prix Simulé"].sum()
-                - scenario_df["Prix Unitaire"].sum()
+                -
+                scenario_df["Prix Unitaire"].sum()
             )
 
             st.metric(
@@ -383,41 +409,36 @@ with tab4:
                 f"{impact:,.2f}"
             )
 
-        else:
-            st.warning(
-                "Colonnes Prix Unitaire ou Sensibilité manquantes."
-            )
-
 # ==========================================================
-# TAB 5 : HISTORIQUE
+# HISTORIQUE
 # ==========================================================
 
 with tab5:
 
-    st.header("Suivi Historique")
+    st.header("Historique")
 
-    fig1 = px.line(
+    fig_tra = px.line(
         df_history,
         x="Date",
-        y="TRA Moyen",
-        title="Evolution du TRA Moyen"
+        y="TRA Moyen"
     )
 
     st.plotly_chart(
-        fig1,
-        use_container_width=True
+        fig_tra,
+        use_container_width=True,
+        key="history_tra"
     )
 
-    fig2 = px.line(
+    fig_duration = px.line(
         df_history,
         x="Date",
-        y="Duration Moyenne",
-        title="Evolution de la Duration Moyenne"
+        y="Duration Moyenne"
     )
 
     st.plotly_chart(
-        fig2,
-        use_container_width=True
+        fig_duration,
+        use_container_width=True,
+        key="history_duration"
     )
 
 # ==========================================================
@@ -426,7 +447,9 @@ with tab5:
 
 st.divider()
 
-with st.expander("Afficher les données détaillées"):
+with st.expander(
+    "Afficher les données détaillées"
+):
 
     st.dataframe(
         filtered_df,
