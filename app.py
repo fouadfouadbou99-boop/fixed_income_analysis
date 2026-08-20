@@ -100,8 +100,8 @@ with tab1:
         st.markdown("### Visualisations Clés")
         # Exemple: Distribution par classification
         classification_counts = filtered_df['Classification'].value_counts().reset_index()
-        classification_counts.columns = ['Classification', 'Nombre d'Obligations']
-        fig_classification = px.pie(classification_counts, values='Nombre d'Obligations', names='Classification',
+        classification_counts.columns = ['Classification', "Nombre d'Obligations"]
+        fig_classification = px.pie(classification_counts, values="Nombre d'Obligations", names='Classification',
                                       title='Distribution des Obligations par Classification')
         st.plotly_chart(fig_classification, use_container_width=True)
 
@@ -196,3 +196,4 @@ with tab5:
                                    title='Évolution de la Duration Moyenne',
                                    labels={'Duration Moyenne Historique': 'Duration Moyenne'})
     st.plotly_chart(fig_duration_history, use_container_width=True)
+
