@@ -1,14 +1,49 @@
 # Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python/
-env/
-venv/
-*.env
-.ipynb_checkpoints
-.streamlit
+*.py[cod]
+*$py.class
 
-# Excel data file (if you choose not to commit it)
-# Data_obligations_cleaned.xlsx
+# Environnements virtuels
+venv/
+env/
+.venv/
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Excel temporaires
+~$*.xlsx
+
+# Fichiers Excel de données
+Data_obligations_cleaned.xlsx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Distribution
+build/
+dist/
+*.egg-info/
+
+# Cache
+.cache/
+.pytest_cache/
+
+# PDF générés
+exports/*.pdf
+
+# Rapports Excel générés
+exports/*.xlsx
