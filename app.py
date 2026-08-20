@@ -61,12 +61,12 @@ with tab1:
             st.metric(label="Duration Moyenne", value=f"{avg_duration:.2f} ans")
         with col4:
             st.metric(label="TRA Moyen", value=f"{avg_tra:.2%}")
-        
+
         st.markdown("### Visualisations Clés")
         # Exemple: Distribution par classification
         classification_counts = filtered_df['Classification'].value_counts().reset_index()
-        classification_counts.columns = ['Classification', 'Nombre d'Obligations']
-        fig_classification = px.pie(classification_counts, values='Nombre d'Obligations', names='Classification',
+        classification_counts.columns = ['Classification', 'Nombre d\'Obligations']
+        fig_classification = px.pie(classification_counts, values='Nombre d\'Obligations', names='Classification',
                                       title='Distribution des Obligations par Classification')
         st.plotly_chart(fig_classification, use_container_width=True)
 
@@ -108,3 +108,4 @@ with tab5:
     st.info("Cette section permettra de suivre l'évolution des métriques du portefeuille sur des périodes définies.")
     st.warning("**Implémentation requise :** Nécessite des données historiques du portefeuille pour être fonctionnelle.")
     # TODO: Intégrer des graphiques de séries temporelles pour les métriques clés
+
