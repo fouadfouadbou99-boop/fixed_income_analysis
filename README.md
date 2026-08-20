@@ -1,48 +1,19 @@
-# Analyse de Portefeuille Obligataire
+# Analyse du Portefeuille Obligataire
 
-Application Streamlit permettant l'analyse et le suivi d'un portefeuille obligataire.
+Application Streamlit permettant :
 
-## Fonctionnalités
+- Suivi du portefeuille obligataire
+- Analyse de la duration
+- Analyse de sensibilité
+- Benchmarking contre les indices MBI
+- Analyse de concentration
+- Stress tests de taux
+- Historisation des indicateurs
+- Export Excel et CSV
 
-### Tableau de Bord Exécutif
+## Installation
 
-- Encours total
-- Nombre d'obligations
-- Duration moyenne
-- TRA moyen
-- Répartition par classification
+```bash
+git clone https://github.com/votre-compte/portefeuille-obligataire.git
 
-### Benchmarking
-
-- Comparaison portefeuille vs indice MBI
-- Analyse de performance
-
-### Concentration
-
-- Répartition par catégorie
-- Analyse des risques de concentration
-
-### Stress Testing
-
-Simulation de variations des taux :
-
-- +25 bps
-- +50 bps
-- +100 bps
-- -25 bps
-- -50 bps
-- -100 bps
-
-### Suivi Historique
-
-Suivi de :
-
-- TRA moyen
-- Duration moyenne
-- Evolution du portefeuille
-
----
-
-## Structure du projet
-
-
+cd portefeuille-obligataire
