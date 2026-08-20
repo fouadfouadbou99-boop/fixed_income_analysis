@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from io import BytesIO
 
-# ==========================================================
+# =====================================================
 # CONFIGURATION
-# ==========================================================
+# =====================================================
 
 st.set_page_config(
     page_title="Portefeuille Obligataire",
@@ -14,9 +15,9 @@ st.set_page_config(
 
 st.title("📊 Plateforme d'Analyse du Portefeuille Obligataire")
 
-# ==========================================================
-# SIDEBAR
-# ==========================================================
+# =====================================================
+# CHARGEMENT FICHIER
+# =====================================================
 
 st.sidebar.title("Portefeuille Obligataire")
 
@@ -26,32 +27,37 @@ uploaded_file = st.sidebar.file_uploader(
 )
 
 if uploaded_file is None:
-    st.info("Veuillez charger le fichier Excel du portefeuille.")
+    st.info("Veuillez charger votre fichier Excel.")
     st.stop()
 
-# ==========================================================
-# CHARGEMENT DES DONNEES
-# ==========================================================
+# =====================================================
+# LECTURE EXCEL
+# =====================================================
 
 try:
 
     df = pd.read_excel(uploaded_file)
 
     df.columns = (
-        df.columns.astype(str)
+        df.columns
+        .astype(str)
         .str.strip()
     )
 
 except Exception as e:
 
-    st.error(f"Erreur lors de la lecture du fichier : {str(e)}")
+    st.error(
+        f"Erreur lors du chargement : {e}"
+    )
+
     st.stop()
 
-# ==========================================================
+# =====================================================
 # CONTROLE DES COLONNES
-# ==========================================================
+# =====================================================
 
 required_columns = [
+
     "Description Titres",
     "Prix Global",
     "Duration",
@@ -60,23 +66,26 @@ required_columns = [
     "Taux facial",
     "Segments",
     "Classification"
+
 ]
 
 missing = [
-    col
-    for col in required_columns
-    if col not in df.columns
+    c
+    for c in required_columns
+    if c not in df.columns
 ]
 
-if missing:
+if len(missing) > 0:
+
     st.error(
         f"Colonnes manquantes : {missing}"
     )
+
     st.stop()
 
-# ==========================================================
+# =====================================================
 # KPI EXECUTIFS
-# ==========================================================
+# =====================================================
 
 encours = df["Prix Global"].sum()
 
@@ -85,7 +94,8 @@ duration_mp = (
         df["Duration"]
         * df["Prix Global"]
     ).sum()
-    / encours
+    /
+    encours
 )
 
 sensibilite_mp = (
@@ -93,7 +103,8 @@ sensibilite_mp = (
         df["Sensibilité"]
         * df["Prix Global"]
     ).sum()
-    / encours
+    /
+    encours
 )
 
 tra_mp = (
@@ -101,7 +112,8 @@ tra_mp = (
         df["TRA"]
         * df["Prix Global"]
     ).sum()
-    / encours
+    /
+    encours
 )
 
 coupon_mp = (
@@ -109,16 +121,17 @@ coupon_mp = (
         df["Taux facial"]
         * df["Prix Global"]
     ).sum()
-    / encours
+    /
+    encours
 )
 
-st.subheader("Tableau de bord exécutif")
+st.subheader("Tableau de Bord Exécutif")
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
 col1.metric(
-    "Encours",
-    f"{encours/1e9:,.2f} MMDH"
+    "Encours (MAD)",
+    f"{encours:,.0f}"
 )
 
 col2.metric(
@@ -143,19 +156,18 @@ col5.metric(
 
 st.divider()
 
-# ==========================================================
-# REPARTITION PAR SEGMENT
-# ==========================================================
+# =====================================================
+# REPARTITION SEGMENTS
+# =====================================================
 
-col1, col2 = st.columns(2)
+colA, colB = st.columns(2)
 
-with col1:
+with colA:
 
     st.subheader("Répartition par Segment")
 
     segment = (
-        df.groupby("Segments")
-        ["Prix Global"]
+        df.groupby("Segments")["Prix Global"]
         .sum()
         .reset_index()
     )
@@ -172,9 +184,11 @@ with col1:
         use_container_width=True
     )
 
-with col2:
+with colB:
 
-    st.subheader("Répartition par Classification")
+    st.subheader(
+        "Répartition par Classification"
+    )
 
     classification = (
         df.groupby("Classification")
@@ -195,11 +209,11 @@ with col2:
         use_container_width=True
     )
 
-st.divider()
-
-# ==========================================================
+# =====================================================
 # TOP 10 POSITIONS
-# ==========================================================
+# =====================================================
+
+st.divider()
 
 st.subheader("Top 10 Positions")
 
@@ -225,9 +239,11 @@ st.dataframe(
     use_container_width=True
 )
 
-# ==========================================================
-# CONCENTRATION
-# ==========================================================
+# =====================================================
+# ANALYSE DE CONCENTRATION
+# =====================================================
+
+st.divider()
 
 st.subheader("Analyse de Concentration")
 
@@ -237,10 +253,12 @@ concentration["Poids %"] = (
     concentration["Prix Global"]
     /
     encours
-    * 100
+    *
+    100
 )
 
 st.dataframe(
+
     concentration[
         [
             "Description Titres",
@@ -248,12 +266,16 @@ st.dataframe(
             "Poids %"
         ]
     ],
+
     use_container_width=True
+
 )
 
-# ==========================================================
-# STRESS TEST
-# ==========================================================
+# =====================================================
+# STRESS TESTS
+# =====================================================
+
+st.divider()
 
 st.subheader("Stress Test de Taux")
 
@@ -274,24 +296,28 @@ for shock in shocks:
 
     impact = (
         - sensibilite_mp
-        * encours
-        * (shock / 10000)
+        *
+        encours
+        *
+        (shock / 10000)
     )
 
     impacts.append(impact)
 
-stress = pd.DataFrame(
-    {
-        "Choc (pb)": shocks,
-        "Impact (MAD)": impacts
-    }
-)
+stress = pd.DataFrame({
+
+    "Choc (pb)": shocks,
+    "Impact (MAD)": impacts
+
+})
 
 fig_stress = px.line(
+
     stress,
     x="Choc (pb)",
     y="Impact (MAD)",
     markers=True
+
 )
 
 st.plotly_chart(
@@ -304,41 +330,139 @@ st.dataframe(
     use_container_width=True
 )
 
+# =====================================================
+# STATISTIQUES
+# =====================================================
+
 st.divider()
 
-# ==========================================================
-# APERCU DETAILLE DU PORTEFEUILLE
-# ==========================================================
+st.subheader("Statistiques du Portefeuille")
 
-st.subheader("Portefeuille détaillé")
+stats = pd.DataFrame({
+
+    "Indicateur": [
+        "Nombre de lignes",
+        "Encours",
+        "Durée",
+        "Sensibilité",
+        "TRA",
+        "Coupon"
+    ],
+
+    "Valeur": [
+
+        len(df),
+        round(encours, 0),
+        round(duration_mp, 2),
+        round(sensibilite_mp, 2),
+        round(tra_mp * 100, 2),
+        round(coupon_mp * 100, 2)
+
+    ]
+
+})
 
 st.dataframe(
+    stats,
+    use_container_width=True
+)
+
+# =====================================================
+# PORTEFEUILLE DETAILLE
+# =====================================================
+
+st.divider()
+
+st.subheader("Portefeuille Détaillé")
+
+st.dataframe(
+
     df,
+
     use_container_width=True,
     height=500
+
 )
 
-# ==========================================================
-# EXPORT CSV
-# ==========================================================
+# =====================================================
+# EXPORTS
+# =====================================================
 
-st.subheader("Téléchargement")
+st.divider()
 
-csv = df.to_csv(index=False).encode("utf-8")
+st.subheader("Téléchargements")
+
+# -------------------------------
+# Excel
+# -------------------------------
+
+excel_buffer = BytesIO()
+
+with pd.ExcelWriter(
+    excel_buffer,
+    engine="openpyxl"
+) as writer:
+
+    df.to_excel(
+        writer,
+        sheet_name="Portefeuille",
+        index=False
+    )
+
+    top10.to_excel(
+        writer,
+        sheet_name="Top10",
+        index=False
+    )
+
+    concentration.to_excel(
+        writer,
+        sheet_name="Concentration",
+        index=False
+    )
+
+    stress.to_excel(
+        writer,
+        sheet_name="StressTest",
+        index=False
+    )
+
+excel_data = excel_buffer.getvalue()
 
 st.download_button(
-    label="Télécharger le portefeuille CSV",
+
+    label="📊 Télécharger le Rapport Excel",
+
+    data=excel_data,
+
+    file_name="Rapport_Portefeuille_Obligataire.xlsx",
+
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+)
+
+# -------------------------------
+# CSV
+# -------------------------------
+
+csv = df.to_csv(
+    index=False
+).encode("utf-8")
+
+st.download_button(
+
+    label="📄 Télécharger CSV",
+
     data=csv,
-    file_name="portefeuille.csv",
+
+    file_name="Portefeuille.csv",
+
     mime="text/csv"
+
 )
 
-# ==========================================================
-# INFORMATIONS
-# ==========================================================
+# =====================================================
+# FIN
+# =====================================================
 
-st.markdown("---")
-
-st.success(
-    "Application chargée avec succès."
-)
+st.markdown(
