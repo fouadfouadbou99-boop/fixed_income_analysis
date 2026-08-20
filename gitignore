@@ -1,12 +1,24 @@
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
+*.pyc
+*.pyo
+*.pyd
 
-# Environnements virtuels
+# Virtual env
 venv/
-env/
-.venv/
+.env/
+
+# Streamlit
+.streamlit/
+
+# Excel temporaires
+~$*.xlsx
+
+# Mac
+.DS_Store
+
+# Logs
+*.log
 
 # VS Code
 .vscode/
@@ -14,36 +26,8 @@ env/
 # PyCharm
 .idea/
 
-# Streamlit
-.streamlit/secrets.toml
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Logs
-*.log
-
-# Excel temporaires
-~$*.xlsx
-
-# Fichiers Excel de données
-Data_obligations_cleaned.xlsx
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Distribution
-build/
-dist/
-*.egg-info/
-
 # Cache
-.cache/
 .pytest_cache/
 
-# PDF générés
-exports/*.pdf
-
-# Rapports Excel générés
-exports/*.xlsx
+# Data historique
+historique/*.xlsx
