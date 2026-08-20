@@ -112,6 +112,3 @@ with tab4:
 
 with tab5:
     st.header("Suivi Historique")
-    st.info("Cette section permettra de suivre l'évolution des métriques du portefeuille sur des périodes définies.")
-    st.warning("**Implémentation requise :** Nécessite des données historiques du portefeuille pour être fonctionnelle.")
-    # TODO: Intégrer des graphiques de séries temporelles pour les métriques clés
