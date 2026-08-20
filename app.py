@@ -1,457 +1,240 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import plotly.express as px
+from pathlib import Path
 
-# ==========================================================
+# --------------------------------------------------
 # CONFIGURATION
-# ==========================================================
+# --------------------------------------------------
 
 st.set_page_config(
-    page_title="Analyse Portefeuille Obligataire",
+    page_title="Portefeuille Obligataire",
     page_icon="📈",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# ==========================================================
-# CHARGEMENT DATA
-# ==========================================================
+# --------------------------------------------------
+# SIDEBAR
+# --------------------------------------------------
 
-@st.cache_data
-def load_data(path):
+st.sidebar.image(
+    "https://streamlit.io/images/brand/streamlit-logo-primary-colormark-darktext.png",
+    width=200
+)
 
-    try:
+st.sidebar.title("Portefeuille Obligataire")
 
-        df = pd.read_excel(path)
+st.sidebar.markdown("---")
 
-        # nettoyage colonnes
-        df.columns = df.columns.str.strip()
+uploaded_file = st.sidebar.file_uploader(
+    "Charger le portefeuille",
+    type=["xlsx"]
+)
 
-        return df
+# --------------------------------------------------
+# SESSION STATE
+# --------------------------------------------------
 
-    except Exception as e:
+if uploaded_file is not None:
 
-        st.error(f"Erreur chargement Excel : {e}")
+    portefeuille = pd.read_excel(uploaded_file)
 
-        return pd.DataFrame()
+    st.session_state["portfolio"] = portefeuille
 
+# --------------------------------------------------
+# PAGE PRINCIPALE
+# --------------------------------------------------
 
-# ==========================================================
-# BENCHMARK SYNTHETIQUE
-# ==========================================================
-
-@st.cache_data
-def generate_benchmark():
-
-    np.random.seed(42)
-
-    dates = pd.date_range(
-        start="2022-01-31",
-        periods=24,
-        freq="ME"
-    )
-
-    return pd.DataFrame({
-        "Date": dates,
-        "MBI Index":
-            100 + np.cumsum(
-                np.random.normal(0.15, 0.40, 24)
-            ),
-        "Performance Portefeuille":
-            100 + np.cumsum(
-                np.random.normal(0.20, 0.50, 24)
-            )
-    })
-
-
-# ==========================================================
-# HISTORIQUE SYNTHETIQUE
-# ==========================================================
-
-@st.cache_data
-def generate_history():
-
-    np.random.seed(7)
-
-    dates = pd.date_range(
-        start="2021-01-31",
-        periods=36,
-        freq="ME"
-    )
-
-    return pd.DataFrame({
-        "Date": dates,
-        "TRA Moyen":
-            0.03 + np.cumsum(
-                np.random.normal(0, 0.0004, 36)
-            ),
-        "Duration Moyenne":
-            5 + np.cumsum(
-                np.random.normal(0, 0.05, 36)
-            )
-    })
-
-
-# ==========================================================
-# CHARGEMENT
-# ==========================================================
-
-df = load_data("Data_obligations_cleaned.xlsx")
-
-df_benchmark = generate_benchmark()
-
-df_history = generate_history()
-
-# ==========================================================
-# CONTROLE
-# ==========================================================
-
-required_columns = [
-    "Classification",
-    "Nominal Global Restant",
-    "Duration",
-    "TRA"
-]
-
-if not df.empty:
-
-    missing = [
-        c for c in required_columns
-        if c not in df.columns
-    ]
-
-    if missing:
-
-        st.error(
-            f"Colonnes manquantes : {missing}"
-        )
-
-        st.stop()
-
-# ==========================================================
-# TITRE
-# ==========================================================
-
-st.title("📈 Analyse de Portefeuille Obligataire")
+st.title("📊 Plateforme d'Analyse du Portefeuille Obligataire")
 
 st.markdown(
-    "Suivi, pilotage et stress testing du portefeuille."
+"""
+Cette plateforme permet :
+
+✅ Suivi du portefeuille obligataire
+
+✅ Analyse de duration
+
+✅ Analyse de la sensibilité
+
+✅ Benchmarking MBI
+
+✅ Analyse de concentration
+
+✅ Stress tests de taux
+
+✅ Historisation des indicateurs
+
+✅ Téléchargement des résultats
+"""
 )
-
-# ==========================================================
-# SIDEBAR
-# ==========================================================
-
-st.sidebar.header("Filtres")
-
-if not df.empty:
-
-    classifications = sorted(
-        df["Classification"]
-        .dropna()
-        .unique()
-    )
-
-    selected = st.sidebar.multiselect(
-        "Classification",
-        classifications,
-        default=classifications
-    )
-
-    filtered_df = df[
-        df["Classification"]
-        .isin(selected)
-    ].copy()
-
-else:
-
-    filtered_df = pd.DataFrame()
-
-# ==========================================================
-# TABS
-# ==========================================================
-
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "💸 Dashboard",
-    "📊 Benchmark",
-    "📉 Concentration",
-    "💵 Stress Test",
-    "📅 Historique"
-])
-
-# ==========================================================
-# DASHBOARD
-# ==========================================================
-
-with tab1:
-
-    st.header("Tableau de Bord")
-
-    if not filtered_df.empty:
-
-        total_nominal = (
-            filtered_df["Nominal Global Restant"]
-            .sum()
-        )
-
-        avg_duration = (
-            filtered_df["Duration"]
-            .mean()
-        )
-
-        avg_tra = (
-            filtered_df["TRA"]
-            .mean()
-        )
-
-        nb_titres = len(filtered_df)
-
-        c1, c2, c3, c4 = st.columns(4)
-
-        c1.metric(
-            "Nominal Total",
-            f"{total_nominal:,.0f} MAD"
-        )
-
-        c2.metric(
-            "Nombre de titres",
-            nb_titres
-        )
-
-        c3.metric(
-            "Duration Moyenne",
-            f"{avg_duration:.2f}"
-        )
-
-        c4.metric(
-            "TRA Moyen",
-            f"{avg_tra:.2%}"
-        )
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-
-            pie_data = (
-                filtered_df["Classification"]
-                .value_counts()
-                .reset_index()
-            )
-
-            pie_data.columns = [
-                "Classification",
-                "Nombre"
-            ]
-
-            fig1 = px.pie(
-                pie_data,
-                names="Classification",
-                values="Nombre",
-                title="Répartition Classification"
-            )
-
-            st.plotly_chart(
-                fig1,
-                use_container_width=True,
-                key="pie_classification"
-            )
-
-        with col2:
-
-            bar_data = (
-                filtered_df.groupby(
-                    "Classification"
-                )["Nominal Global Restant"]
-                .sum()
-                .reset_index()
-            )
-
-            fig2 = px.bar(
-                bar_data,
-                x="Classification",
-                y="Nominal Global Restant",
-                title="Nominal par Classification"
-            )
-
-            st.plotly_chart(
-                fig2,
-                use_container_width=True,
-                key="bar_nominal"
-            )
-
-# ==========================================================
-# BENCHMARK
-# ==========================================================
-
-with tab2:
-
-    st.header("Benchmarking")
-
-    fig_benchmark = px.line(
-        df_benchmark,
-        x="Date",
-        y=[
-            "MBI Index",
-            "Performance Portefeuille"
-        ]
-    )
-
-    st.plotly_chart(
-        fig_benchmark,
-        use_container_width=True,
-        key="benchmark"
-    )
-
-# ==========================================================
-# CONCENTRATION
-# ==========================================================
-
-with tab3:
-
-    st.header("Analyse de Concentration")
-
-    if (
-        "Périodicité Coupon"
-        in filtered_df.columns
-    ):
-
-        concentration = (
-            filtered_df[
-                "Périodicité Coupon"
-            ]
-            .value_counts(normalize=True)
-            .reset_index()
-        )
-
-        concentration.columns = [
-            "Périodicité Coupon",
-            "Poids"
-        ]
-
-        fig3 = px.bar(
-            concentration,
-            x="Périodicité Coupon",
-            y="Poids"
-        )
-
-        st.plotly_chart(
-            fig3,
-            use_container_width=True,
-            key="concentration_coupon"
-        )
-
-# ==========================================================
-# STRESS TEST
-# ==========================================================
-
-with tab4:
-
-    st.header("Stress Test")
-
-    if not filtered_df.empty:
-
-        shock_bp = st.slider(
-            "Choc de taux (bps)",
-            -300,
-            300,
-            0,
-            25
-        )
-
-        shock = shock_bp / 10000
-
-        st.metric(
-            "Choc appliqué",
-            f"{shock_bp} bps"
-        )
-
-        if (
-            "Prix Unitaire" in filtered_df.columns
-            and "Sensibilité" in filtered_df.columns
-        ):
-
-            scenario_df = filtered_df.copy()
-
-            scenario_df["Prix Simulé"] = (
-                scenario_df["Prix Unitaire"]
-                *
-                (
-                    1
-                    - scenario_df["Sensibilité"]
-                    * shock
-                )
-            )
-
-            cols = [
-                c
-                for c in [
-                    "Code",
-                    "Prix Unitaire",
-                    "Prix Simulé",
-                    "Sensibilité"
-                ]
-                if c in scenario_df.columns
-            ]
-
-            st.dataframe(
-                scenario_df[cols],
-                use_container_width=True
-            )
-
-            impact = (
-                scenario_df["Prix Simulé"].sum()
-                -
-                scenario_df["Prix Unitaire"].sum()
-            )
-
-            st.metric(
-                "Impact estimé",
-                f"{impact:,.2f}"
-            )
-
-# ==========================================================
-# HISTORIQUE
-# ==========================================================
-
-with tab5:
-
-    st.header("Historique")
-
-    fig_tra = px.line(
-        df_history,
-        x="Date",
-        y="TRA Moyen"
-    )
-
-    st.plotly_chart(
-        fig_tra,
-        use_container_width=True,
-        key="history_tra"
-    )
-
-    fig_duration = px.line(
-        df_history,
-        x="Date",
-        y="Duration Moyenne"
-    )
-
-    st.plotly_chart(
-        fig_duration,
-        use_container_width=True,
-        key="history_duration"
-    )
-
-# ==========================================================
-# DONNEES DETAILLEES
-# ==========================================================
 
 st.divider()
 
-with st.expander(
-    "Afficher les données détaillées"
-):
+# --------------------------------------------------
+# CONTROLES
+# --------------------------------------------------
 
-    st.dataframe(
-        filtered_df,
-        use_container_width=True
+if "portfolio" not in st.session_state:
+
+    st.warning(
+        "Veuillez charger un fichier Excel depuis le menu de gauche."
     )
+
+    st.stop()
+
+# --------------------------------------------------
+# CHARGEMENT DONNÉES
+# --------------------------------------------------
+
+df = st.session_state["portfolio"]
+
+# --------------------------------------------------
+# KPI RAPIDES
+# --------------------------------------------------
+
+encours = df["Prix Global"].sum()
+
+duration = (
+    (
+        df["Duration"]
+        * df["Prix Global"]
+    ).sum()
+    / encours
+)
+
+sensibilite = (
+    (
+        df["Sensibilité"]
+        * df["Prix Global"]
+    ).sum()
+    / encours
+)
+
+tra = (
+    (
+        df["TRA"]
+        * df["Prix Global"]
+    ).sum()
+    / encours
+)
+
+coupon = (
+    (
+        df["Taux facial"]
+        * df["Prix Global"]
+    ).sum()
+    / encours
+)
+
+col1, col2, col3, col4, col5 = st.columns(5)
+
+col1.metric(
+    "Encours",
+    f"{encours/1e9:,.2f} MMAD"
+)
+
+col2.metric(
+    "Duration",
+    f"{duration:.2f}"
+)
+
+col3.metric(
+    "Sensibilité",
+    f"{sensibilite:.2f}"
+)
+
+col4.metric(
+    "TRA",
+    f"{tra:.2%}"
+)
+
+col5.metric(
+    "Coupon",
+    f"{coupon:.2%}"
+)
+
+st.divider()
+
+# --------------------------------------------------
+# APERÇU
+# --------------------------------------------------
+
+st.subheader("Aperçu du portefeuille")
+
+colonnes = [
+    "Description Titres",
+    "Prix Global",
+    "Duration",
+    "Sensibilité",
+    "TRA",
+    "Segments",
+    "Classification"
+]
+
+colonnes_existantes = [
+    c for c in colonnes
+    if c in df.columns
+]
+
+st.dataframe(
+    df[colonnes_existantes],
+    use_container_width=True
+)
+
+# --------------------------------------------------
+# STATISTIQUES
+# --------------------------------------------------
+
+st.subheader("Statistiques globales")
+
+stats = pd.DataFrame(
+    {
+        "Indicateur": [
+            "Nombre de lignes",
+            "Encours",
+            "Duration",
+            "Sensibilité",
+            "TRA Moyen"
+        ],
+        "Valeur": [
+            len(df),
+            round(encours, 0),
+            round(duration, 2),
+            round(sensibilite, 2),
+            round(tra * 100, 2)
+        ]
+    }
+)
+
+st.dataframe(
+    stats,
+    use_container_width=True
+)
+
+# --------------------------------------------------
+# EXPORT
+# --------------------------------------------------
+
+st.subheader("Exports")
+
+csv = df.to_csv(
+    index=False
+).encode("utf-8")
+
+st.download_button(
+    label="📥 Télécharger CSV",
+    data=csv,
+    file_name="portefeuille.csv",
+    mime="text/csv"
+)
+
+# --------------------------------------------------
+# FOOTER
+# --------------------------------------------------
+
+st.markdown("---")
+
+st.caption(
+    "Version 2.0 | Application d'analyse du portefeuille obligataire"
+)
