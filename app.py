@@ -1,199 +1,434 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import numpy as np
+import plotly.express as px
 
-# --- Configuration de la page Streamlit ---
-st.set_page_config(layout="wide", page_title="Analyse de Portefeuille Obligataire")
+# ==========================================================
+# CONFIGURATION PAGE
+# ==========================================================
 
-# --- Chargement des données ---
+st.set_page_config(
+    page_title="Analyse de Portefeuille Obligataire",
+    page_icon="📈",
+    layout="wide"
+)
+
+# ==========================================================
+# CHARGEMENT DES DONNEES
+# ==========================================================
+
 @st.cache_data
 def load_data(file_path):
     try:
         df = pd.read_excel(file_path)
-        return df
-    except FileNotFoundError:
-        st.error(f"Erreur : Le fichier {file_path} n'a pas été trouvé. Assurez-vous qu'il est dans le répertoire correct.")
-        return pd.DataFrame() # Retourne un DataFrame vide en cas d'erreur
-    except Exception as e:
-        st.error(f"Erreur lors du chargement du fichier Excel : {e}")
-        return pd.DataFrame() # Retourne un DataFrame vide en cas d'erreur
 
-excel_file = 'Data_obligations_cleaned.xlsx'
+        # Nettoyage des noms de colonnes
+        df.columns = df.columns.str.strip()
+
+        return df
+
+    except FileNotFoundError:
+        st.error(f"Fichier introuvable : {file_path}")
+        return pd.DataFrame()
+
+    except Exception as e:
+        st.error(f"Erreur lors du chargement : {e}")
+        return pd.DataFrame()
+
+
+excel_file = "Data_obligations_cleaned.xlsx"
 df = load_data(excel_file)
 
-# --- Génération de données synthétiques pour le benchmarking ---
-# Ces données sont des exemples pour illustrer la fonctionnalité.
-dates = pd.date_range(start='2022-01-01', periods=24, freq='M')
-mbi_index_values = 100 + np.cumsum(np.random.randn(24) * 0.5)
-portfolio_benchmark_values = 100 + np.cumsum(np.random.randn(24) * 0.6 + 0.1) # légèrement en croissance
-df_benchmark = pd.DataFrame({
-    'Date': dates,
-    'MBI Index': mbi_index_values,
-    'Performance Portefeuille': portfolio_benchmark_values
-})
-# Assurez-vous que la colonne Date est de type datetime pour Plotly
-df_benchmark['Date'] = pd.to_datetime(df_benchmark['Date'])
+# ==========================================================
+# CONTROLES DE COHERENCE
+# ==========================================================
 
-# --- Génération de données synthétiques pour le Suivi Historique ---
-# Ces données sont des exemples pour illustrer la fonctionnalité.
-dates_history = pd.date_range(start='2021-01-01', periods=36, freq='M')
-tra_moyen_history = 0.03 + np.cumsum(np.random.randn(36) * 0.001)
-duration_moyenne_history = 5 + np.cumsum(np.random.randn(36) * 0.1)
+required_columns = [
+    "Classification",
+    "Nominal Global Restant",
+    "Duration",
+    "TRA"
+]
 
-df_historical_metrics = pd.DataFrame({
-    'Date': dates_history,
-    'TRA Moyen Historique': tra_moyen_history,
-    'Duration Moyenne Historique': duration_moyenne_history
-})
-df_historical_metrics['Date'] = pd.to_datetime(df_historical_metrics['Date'])
+if not df.empty:
 
+    missing_cols = [
+        col for col in required_columns
+        if col not in df.columns
+    ]
 
-# --- Titre de l'application ---
-st.title("📈 Analyse de Portefeuille Obligataire")
-st.markdown("Une application pour l'analyse, le suivi et la gestion automatisée d'un portefeuille obligataire.")
+    if missing_cols:
+        st.error(
+            f"Colonnes manquantes dans le fichier Excel : {missing_cols}"
+        )
+        st.stop()
 
-# --- Sidebar pour les filtres globaux ---
-st.sidebar.header("Filtres Globaux")
+# ==========================================================
+# DONNEES SYNTHETIQUES BENCHMARK
+# ==========================================================
 
-# Exemple de filtre: Sélection de la classification
-selected_classification = st.sidebar.multiselect(
-    "Filtrer par Classification",
-    options=df['Classification'].unique() if not df.empty else [], # Handle empty DataFrame
-    default=df['Classification'].unique() if not df.empty else [] # Handle empty DataFrame
+dates = pd.date_range(
+    start="2022-01-31",
+    periods=24,
+    freq="ME"
 )
 
-filtered_df = df[df['Classification'].isin(selected_classification)] if not df.empty else pd.DataFrame()
+np.random.seed(42)
 
-st.sidebar.markdown("--- ")
-st.sidebar.subheader("Options d'Analyse")
-# Future functionality toggles can go here
+df_benchmark = pd.DataFrame({
+    "Date": dates,
+    "MBI Index":
+        100 + np.cumsum(np.random.normal(0.15, 0.4, 24)),
+    "Performance Portefeuille":
+        100 + np.cumsum(np.random.normal(0.20, 0.50, 24))
+})
 
-# --- Onglets pour l'organisation de l'application ---
+# ==========================================================
+# DONNEES HISTORIQUES SYNTHETIQUES
+# ==========================================================
+
+dates_history = pd.date_range(
+    start="2021-01-31",
+    periods=36,
+    freq="ME"
+)
+
+df_history = pd.DataFrame({
+    "Date": dates_history,
+    "TRA Moyen":
+        0.03 + np.cumsum(np.random.normal(0, 0.0005, 36)),
+    "Duration Moyenne":
+        5 + np.cumsum(np.random.normal(0, 0.05, 36))
+})
+
+# ==========================================================
+# TITRE
+# ==========================================================
+
+st.title("📈 Analyse de Portefeuille Obligataire")
+
+st.markdown(
+    """
+    Plateforme de suivi, visualisation et stress testing
+    d'un portefeuille obligataire.
+    """
+)
+
+# ==========================================================
+# SIDEBAR
+# ==========================================================
+
+st.sidebar.header("Filtres")
+
+if not df.empty:
+
+    classifications = sorted(
+        df["Classification"].dropna().unique()
+    )
+
+    selected_classifications = st.sidebar.multiselect(
+        "Classification",
+        classifications,
+        default=classifications
+    )
+
+    filtered_df = df[
+        df["Classification"].isin(
+            selected_classifications
+        )
+    ].copy()
+
+else:
+    filtered_df = pd.DataFrame()
+
+# ==========================================================
+# TABS
+# ==========================================================
+
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "💸 Tableau de Bord Exécutif",
-    "📊 Benchmarking (Indices MBI)",
-    "📉 Analyse de Concentration",
-    "💵 Stress Test (Taux d'intérêt)",
-    "🔍 Suivi Historique"
+    "💸 Tableau de bord",
+    "📊 Benchmarking",
+    "📉 Concentration",
+    "💵 Stress Test",
+    "📅 Historique"
 ])
 
+# ==========================================================
+# TAB 1 : DASHBOARD EXECUTIF
+# ==========================================================
+
 with tab1:
+
     st.header("Tableau de Bord Exécutif")
+
     if not filtered_df.empty:
-        # Exemples de KPI
-        total_nominal_global_restant = filtered_df['Nominal Global Restant '].sum()
-        nombre_obligations = filtered_df.shape[0]
-        avg_duration = filtered_df['Duration'].mean()
-        avg_tra = filtered_df['TRA'].mean()
+
+        total_nominal = filtered_df[
+            "Nominal Global Restant"
+        ].sum()
+
+        nb_lignes = len(filtered_df)
+
+        duration_moyenne = filtered_df[
+            "Duration"
+        ].mean()
+
+        tra_moyen = filtered_df[
+            "TRA"
+        ].mean()
 
         col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric(label="Nominal Global Restant Total", value=f"{total_nominal_global_restant:,.2f} MAD")
-        with col2:
-            st.metric(label="Nombre d'Obligations", value=f"{nombre_obligations}")
-        with col3:
-            st.metric(label="Duration Moyenne", value=f"{avg_duration:.2f} ans")
-        with col4:
-            st.metric(label="TRA Moyen", value=f"{avg_tra:.2%}")
 
-        st.markdown("### Visualisations Clés")
-        # Exemple: Distribution par classification
-        classification_counts = filtered_df['Classification'].value_counts().reset_index()
-        classification_counts.columns = ['Classification', "Nombre d'Obligations"]
-        fig_classification = px.pie(classification_counts, values="Nombre d'Obligations", names='Classification',
-                                      title='Distribution des Obligations par Classification')
-        st.plotly_chart(fig_classification, use_container_width=True)
+        col1.metric(
+            "Nominal Global",
+            f"{total_nominal:,.0f} MAD"
+        )
 
-        # Exemple: Nominal Global Restant par Classification
-        nominal_by_classification = filtered_df.groupby('Classification')['Nominal Global Restant '].sum().reset_index()
-        fig_nominal_classification = px.bar(nominal_by_classification, x='Classification', y='Nominal Global Restant ',
-                                               title='Nominal Global Restant par Classification')
-        st.plotly_chart(fig_nominal_classification, use_container_width=True)
+        col2.metric(
+            "Nombre de lignes",
+            f"{nb_lignes}"
+        )
+
+        col3.metric(
+            "Duration moyenne",
+            f"{duration_moyenne:.2f} ans"
+        )
+
+        col4.metric(
+            "TRA moyen",
+            f"{tra_moyen:.2%}"
+        )
+
+        st.divider()
+
+        colA, colB = st.columns(2)
+
+        with colA:
+
+            repartition = (
+                filtered_df["Classification"]
+                .value_counts()
+                .reset_index()
+            )
+
+            repartition.columns = [
+                "Classification",
+                "Nombre"
+            ]
+
+            fig = px.pie(
+                repartition,
+                names="Classification",
+                values="Nombre",
+                title="Répartition par Classification"
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
+
+        with colB:
+
+            nominal_class = (
+                filtered_df
+                .groupby("Classification")
+                ["Nominal Global Restant"]
+                .sum()
+                .reset_index()
+            )
+
+            fig = px.bar(
+                nominal_class,
+                x="Classification",
+                y="Nominal Global Restant",
+                title="Nominal par Classification"
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
 
     else:
-        st.warning("Aucune donnée ne correspond aux filtres sélectionnés.")
+        st.warning("Aucune donnée disponible.")
+
+# ==========================================================
+# TAB 2 : BENCHMARK
+# ==========================================================
 
 with tab2:
-    st.header("Benchmarking (Indices MBI)")
-    st.info("Cette section compare la performance du portefeuille aux indices du Marché Obligataire International (MBI) à l'aide de données synthétiques.")
 
-    st.markdown("### Performance du Portefeuille vs. Indice MBI (Données Synthétiques)")
-    fig_benchmark = px.line(df_benchmark, x='Date', y=['MBI Index', 'Performance Portefeuille'],
-                            title='Comparaison de la Performance',
-                            labels={'value': 'Valeur de l'Indice', 'variable': 'Série'})
-    st.plotly_chart(fig_benchmark, use_container_width=True)
+    st.header("Benchmarking")
+
+    fig = px.line(
+        df_benchmark,
+        x="Date",
+        y=[
+            "MBI Index",
+            "Performance Portefeuille"
+        ],
+        title="Portefeuille vs MBI",
+        labels={
+            "value": "Niveau d'indice",
+            "variable": "Série"
+        }
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+# ==========================================================
+# TAB 3 : CONCENTRATION
+# ==========================================================
 
 with tab3:
+
     st.header("Analyse de Concentration")
-    st.info("Cette section analysera la concentration du portefeuille par émetteur, secteur, etc.")
-    if not filtered_df.empty:
-        st.markdown("### Concentration par Type de Périodicité Coupon")
-        concentration_pc = filtered_df['Périodicité Coupon'].value_counts(normalize=True).reset_index()
-        concentration_pc.columns = ['Périodicité Coupon', 'Proportion']
-        fig_concentration = px.bar(concentration_pc, x='Périodicité Coupon', y='Proportion',
-                                   title='Concentration par Périodicité Coupon', labels={'Proportion': 'Proportion du Portefeuille'})
-        st.plotly_chart(fig_concentration, use_container_width=True)
+
+    if (
+        not filtered_df.empty
+        and "Périodicité Coupon" in filtered_df.columns
+    ):
+
+        concentration = (
+            filtered_df["Périodicité Coupon"]
+            .value_counts(normalize=True)
+            .reset_index()
+        )
+
+        concentration.columns = [
+            "Périodicité Coupon",
+            "Poids"
+        ]
+
+        fig = px.bar(
+            concentration,
+            x="Périodicité Coupon",
+            y="Poids",
+            title="Concentration des Coupons"
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+
     else:
-        st.warning("Aucune donnée ne correspond aux filtres sélectionnés pour l'analyse de concentration.")
+        st.warning(
+            "Colonne Périodicité Coupon indisponible."
+        )
+
+# ==========================================================
+# TAB 4 : STRESS TEST
+# ==========================================================
 
 with tab4:
-    st.header("Stress Test (Taux d'intérêt)")
-    st.info("Cette section simule l'impact des variations des taux d'intérêt sur le portefeuille.")
+
+    st.header("Stress Testing de Taux")
 
     if not filtered_df.empty:
-        st.markdown("### Paramètres du Stress Test")
-        col_stress1, col_stress2 = st.columns(2)
-        with col_stress1:
-            # Slider pour la variation des taux d'intérêt (en points de base)
-            rate_change_bp = st.slider(
-                "Variation des taux d'intérêt (en points de base)",
-                min_value=-100,
-                max_value=100,
-                value=0,
-                step=5
+
+        shock_bp = st.slider(
+            "Choc de taux (bps)",
+            -300,
+            300,
+            0,
+            25
+        )
+
+        shock = shock_bp / 10000
+
+        st.metric(
+            "Variation appliquée",
+            f"{shock_bp} bps"
+        )
+
+        if (
+            "Prix Unitaire" in filtered_df.columns
+            and "Sensibilité" in filtered_df.columns
+        ):
+
+            scenario_df = filtered_df.copy()
+
+            scenario_df["Prix Simulé"] = (
+                scenario_df["Prix Unitaire"]
+                * (
+                    1
+                    - scenario_df["Sensibilité"]
+                    * shock
+                )
             )
-            # Convertir les points de base en pourcentage
-            rate_change_pct = rate_change_bp / 10000.0
 
-        with col_stress2:
-            st.metric(label="Variation de taux appliquée", value=f"{rate_change_bp} bps ({rate_change_pct:.2%})")
+            st.dataframe(
+                scenario_df[
+                    [
+                        "Code",
+                        "Prix Unitaire",
+                        "Prix Simulé",
+                        "Sensibilité"
+                    ]
+                ]
+            )
 
-        st.markdown("### Résultats Simulé")
-        # Calcul simple de l'impact sur le prix (approximation avec la sensibilité)
-        # Nouvelle colonne pour le prix simulé
-        if 'Prix Unitaire' in filtered_df.columns and 'Sensibilité' in filtered_df.columns:
-            filtered_df['Prix Unitaire Simulé'] = filtered_df['Prix Unitaire'] * (1 - filtered_df['Sensibilité'] * rate_change_pct)
-            st.write("**Impact sur le Prix Unitaire :**")
-            st.dataframe(filtered_df[['Code', 'Prix Unitaire', 'Prix Unitaire Simulé', 'Sensibilité']].head())
+            impact = (
+                scenario_df["Prix Simulé"].sum()
+                - scenario_df["Prix Unitaire"].sum()
+            )
 
-            # Calcul de la nouvelle duration (simplifié pour l'exemple)
-            # Supposons que la duration change proportionnellement ou de manière plus complexe
-            # Pour cet exemple, nous allons simplement ajuster un peu la duration existante
-            if 'Duration' in filtered_df.columns:
-                filtered_df['Duration Simulée'] = filtered_df['Duration'] * (1 + rate_change_pct * 5) # Facteur arbitraire pour montrer un changement
-                st.write("**Impact sur la Duration :**")
-                st.dataframe(filtered_df[['Code', 'Duration', 'Duration Simulée']].head())
+            st.metric(
+                "Impact estimé",
+                f"{impact:,.2f}"
+            )
+
         else:
-            st.warning("Les colonnes 'Prix Unitaire' ou 'Sensibilité' nécessaires aux calculs ne sont pas disponibles dans les données filtrées.")
+            st.warning(
+                "Colonnes Prix Unitaire ou Sensibilité manquantes."
+            )
 
-        st.info("**Note :** Les calculs ci-dessus sont des approximations simplifiées pour illustrer la fonctionnalité. Une implémentation complète nécessiterait des modèles de valorisation obligataire plus sophistiqués.")
-    else:
-        st.warning("Aucune donnée ne correspond aux filtres sélectionnés pour le stress test.")
+# ==========================================================
+# TAB 5 : HISTORIQUE
+# ==========================================================
 
 with tab5:
+
     st.header("Suivi Historique")
-    st.info("Cette section permet de suivre l'évolution des métriques clés du portefeuille sur des périodes définies, à l'aide de données synthétiques.")
 
-    st.markdown("### Évolution Historique du TRA Moyen (Données Synthétiques)")
-    fig_tra_history = px.line(df_historical_metrics, x='Date', y='TRA Moyen Historique',
-                              title='Évolution du TRA Moyen',
-                              labels={'TRA Moyen Historique': 'TRA Moyen'})
-    st.plotly_chart(fig_tra_history, use_container_width=True)
+    fig1 = px.line(
+        df_history,
+        x="Date",
+        y="TRA Moyen",
+        title="Evolution du TRA Moyen"
+    )
 
-    st.markdown("### Évolution Historique de la Duration Moyenne (Données Synthétiques)")
-    fig_duration_history = px.line(df_historical_metrics, x='Date', y='Duration Moyenne Historique',
-                                   title='Évolution de la Duration Moyenne',
-                                   labels={'Duration Moyenne Historique': 'Duration Moyenne'})
-    st.plotly_chart(fig_duration_history, use_container_width=True)
+    st.plotly_chart(
+        fig1,
+        use_container_width=True
+    )
 
+    fig2 = px.line(
+        df_history,
+        x="Date",
+        y="Duration Moyenne",
+        title="Evolution de la Duration Moyenne"
+    )
+
+    st.plotly_chart(
+        fig2,
+        use_container_width=True
+    )
+
+# ==========================================================
+# DONNEES DETAILLEES
+# ==========================================================
+
+st.divider()
+
+with st.expander("Afficher les données détaillées"):
+
+    st.dataframe(
+        filtered_df,
+        use_container_width=True
+    )
