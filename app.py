@@ -8,8 +8,15 @@ st.set_page_config(layout="wide", page_title="Analyse de Portefeuille Obligatair
 # --- Chargement des données ---
 @st.cache_data
 def load_data(file_path):
-    df = pd.read_excel(file_path)
-    return df
+    try:
+        df = pd.read_excel(file_path)
+        return df
+    except FileNotFoundError:
+        st.error(f"Erreur : Le fichier {file_path} n'a pas été trouvé. Assurez-vous qu'il est dans le répertoire correct.")
+        return pd.DataFrame() # Retourne un DataFrame vide en cas d'erreur
+    except Exception as e:
+        st.error(f"Erreur lors du chargement du fichier Excel : {e}")
+        return pd.DataFrame() # Retourne un DataFrame vide en cas d'erreur
 
 excel_file = 'Data_obligations_cleaned.xlsx'
 df = load_data(excel_file)
@@ -24,11 +31,11 @@ st.sidebar.header("Filtres Globaux")
 # Exemple de filtre: Sélection de la classification
 selected_classification = st.sidebar.multiselect(
     "Filtrer par Classification",
-    options=df['Classification'].unique(),
-    default=df['Classification'].unique()
+    options=df['Classification'].unique() if not df.empty else [], # Handle empty DataFrame
+    default=df['Classification'].unique() if not df.empty else [] # Handle empty DataFrame
 )
 
-filtered_df = df[df['Classification'].isin(selected_classification)]
+filtered_df = df[df['Classification'].isin(selected_classification)] if not df.empty else pd.DataFrame()
 
 st.sidebar.markdown("--- ")
 st.sidebar.subheader("Options d'Analyse")
@@ -36,10 +43,10 @@ st.sidebar.subheader("Options d'Analyse")
 
 # --- Onglets pour l'organisation de l'application ---
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "💸 Tableau de Bord Exécutif", 
-    "📊 Benchmarking (Indices MBI)", 
-    "📉 Analyse de Concentration", 
-    "💵 Stress Test (Taux d'intérêt)", 
+    "💸 Tableau de Bord Exécutif",
+    "📊 Benchmarking (Indices MBI)",
+    "📉 Analyse de Concentration",
+    "💵 Stress Test (Taux d'intérêt)",
     "🔍 Suivi Historique"
 ])
 
@@ -65,8 +72,8 @@ with tab1:
         st.markdown("### Visualisations Clés")
         # Exemple: Distribution par classification
         classification_counts = filtered_df['Classification'].value_counts().reset_index()
-        classification_counts.columns = ['Classification', 'Nombre d\'Obligations']
-        fig_classification = px.pie(classification_counts, values='Nombre d\'Obligations', names='Classification',
+        classification_counts.columns = ['Classification', 'Nombre d'Obligations']
+        fig_classification = px.pie(classification_counts, values='Nombre d'Obligations', names='Classification',
                                       title='Distribution des Obligations par Classification')
         st.plotly_chart(fig_classification, use_container_width=True)
 
@@ -108,4 +115,3 @@ with tab5:
     st.info("Cette section permettra de suivre l'évolution des métriques du portefeuille sur des périodes définies.")
     st.warning("**Implémentation requise :** Nécessite des données historiques du portefeuille pour être fonctionnelle.")
     # TODO: Intégrer des graphiques de séries temporelles pour les métriques clés
-
