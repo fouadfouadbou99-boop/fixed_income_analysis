@@ -27,7 +27,7 @@ Pour exécuter cette application sur votre machine locale, suivez les étapes ci
 2.  **Créer un environnement virtuel (recommandé)** :
     ```bash
     python -m venv venv
-    source venv/bin/activate  # Sur Windows, utilisez `venv\Scripts ctivate`
+    source venv/bin/activate  # Sur Windows, utilisez `venv\Scripts\activate`
     ```
 
 3.  **Installer les dépendances** :
