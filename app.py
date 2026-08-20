@@ -35,29 +35,18 @@ if uploaded_file is None:
 # =====================================================
 
 try:
-
     df = pd.read_excel(uploaded_file)
-
-    df.columns = (
-        df.columns
-        .astype(str)
-        .str.strip()
-    )
+    df.columns = df.columns.astype(str).str.strip()
 
 except Exception as e:
-
-    st.error(
-        f"Erreur lors du chargement : {e}"
-    )
-
+    st.error(f"Erreur lors du chargement du fichier : {e}")
     st.stop()
 
 # =====================================================
-# CONTROLE DES COLONNES
+# VERIFICATION DES COLONNES
 # =====================================================
 
 required_columns = [
-
     "Description Titres",
     "Prix Global",
     "Duration",
@@ -66,103 +55,59 @@ required_columns = [
     "Taux facial",
     "Segments",
     "Classification"
-
 ]
 
-missing = [
-    c
-    for c in required_columns
-    if c not in df.columns
-]
+missing = [c for c in required_columns if c not in df.columns]
 
-if len(missing) > 0:
-
-    st.error(
-        f"Colonnes manquantes : {missing}"
-    )
-
+if missing:
+    st.error(f"Colonnes manquantes : {missing}")
     st.stop()
 
 # =====================================================
-# KPI EXECUTIFS
+# KPI
 # =====================================================
 
 encours = df["Prix Global"].sum()
 
 duration_mp = (
-    (
-        df["Duration"]
-        * df["Prix Global"]
-    ).sum()
-    /
-    encours
+    (df["Duration"] * df["Prix Global"]).sum()
+    / encours
 )
 
 sensibilite_mp = (
-    (
-        df["Sensibilité"]
-        * df["Prix Global"]
-    ).sum()
-    /
-    encours
+    (df["Sensibilité"] * df["Prix Global"]).sum()
+    / encours
 )
 
 tra_mp = (
-    (
-        df["TRA"]
-        * df["Prix Global"]
-    ).sum()
-    /
-    encours
+    (df["TRA"] * df["Prix Global"]).sum()
+    / encours
 )
 
 coupon_mp = (
-    (
-        df["Taux facial"]
-        * df["Prix Global"]
-    ).sum()
-    /
-    encours
+    (df["Taux facial"] * df["Prix Global"]).sum()
+    / encours
 )
 
 st.subheader("Tableau de Bord Exécutif")
 
-col1, col2, col3, col4, col5 = st.columns(5)
+c1, c2, c3, c4, c5 = st.columns(5)
 
-col1.metric(
-    "Encours (MAD)",
-    f"{encours:,.0f}"
-)
+c1.metric("Encours", f"{encours:,.0f}")
+c2.metric("Durée", f"{duration_mp:.2f}")
+c3.metric("Sensibilité", f"{sensibilite_mp:.2f}")
+c4.metric("TRA", f"{tra_mp:.2%}")
+c5.metric("Coupon", f"{coupon_mp:.2%}")
 
-col2.metric(
-    "Durée",
-    f"{duration_mp:.2f}"
-)
-
-col3.metric(
-    "Sensibilité",
-    f"{sensibilite_mp:.2f}"
-)
-
-col4.metric(
-    "TRA",
-    f"{tra_mp:.2%}"
-)
-
-col5.metric(
-    "Coupon",
-    f"{coupon_mp:.2%}"
-)
+# =====================================================
+# GRAPHIQUES
+# =====================================================
 
 st.divider()
 
-# =====================================================
-# REPARTITION SEGMENTS
-# =====================================================
+col1, col2 = st.columns(2)
 
-colA, colB = st.columns(2)
-
-with colA:
+with col1:
 
     st.subheader("Répartition par Segment")
 
@@ -184,15 +129,12 @@ with colA:
         use_container_width=True
     )
 
-with colB:
+with col2:
 
-    st.subheader(
-        "Répartition par Classification"
-    )
+    st.subheader("Répartition par Classification")
 
     classification = (
-        df.groupby("Classification")
-        ["Prix Global"]
+        df.groupby("Classification")["Prix Global"]
         .sum()
         .reset_index()
     )
@@ -210,7 +152,7 @@ with colB:
     )
 
 # =====================================================
-# TOP 10 POSITIONS
+# TOP 10
 # =====================================================
 
 st.divider()
@@ -219,7 +161,7 @@ st.subheader("Top 10 Positions")
 
 top10 = (
     df.sort_values(
-        "Prix Global",
+        by="Prix Global",
         ascending=False
     )
     .head(10)
@@ -240,7 +182,7 @@ st.dataframe(
 )
 
 # =====================================================
-# ANALYSE DE CONCENTRATION
+# CONCENTRATION
 # =====================================================
 
 st.divider()
@@ -251,14 +193,11 @@ concentration = top10.copy()
 
 concentration["Poids %"] = (
     concentration["Prix Global"]
-    /
-    encours
-    *
-    100
+    / encours
+    * 100
 )
 
 st.dataframe(
-
     concentration[
         [
             "Description Titres",
@@ -266,58 +205,43 @@ st.dataframe(
             "Poids %"
         ]
     ],
-
     use_container_width=True
-
 )
 
 # =====================================================
-# STRESS TESTS
+# STRESS TEST
 # =====================================================
 
 st.divider()
 
 st.subheader("Stress Test de Taux")
 
-shocks = [
-    -200,
-    -150,
-    -100,
-    -50,
-    50,
-    100,
-    150,
-    200
-]
+shocks = [-200, -150, -100, -50, 50, 100, 150, 200]
 
 impacts = []
 
 for shock in shocks:
 
     impact = (
-        - sensibilite_mp
-        *
-        encours
-        *
-        (shock / 10000)
+        -sensibilite_mp
+        * encours
+        * (shock / 10000)
     )
 
     impacts.append(impact)
 
-stress = pd.DataFrame({
-
-    "Choc (pb)": shocks,
-    "Impact (MAD)": impacts
-
-})
+stress = pd.DataFrame(
+    {
+        "Choc (pb)": shocks,
+        "Impact (MAD)": impacts
+    }
+)
 
 fig_stress = px.line(
-
     stress,
     x="Choc (pb)",
     y="Impact (MAD)",
     markers=True
-
 )
 
 st.plotly_chart(
@@ -336,31 +260,28 @@ st.dataframe(
 
 st.divider()
 
-st.subheader("Statistiques du Portefeuille")
+st.subheader("Statistiques")
 
-stats = pd.DataFrame({
-
-    "Indicateur": [
-        "Nombre de lignes",
-        "Encours",
-        "Durée",
-        "Sensibilité",
-        "TRA",
-        "Coupon"
-    ],
-
-    "Valeur": [
-
-        len(df),
-        round(encours, 0),
-        round(duration_mp, 2),
-        round(sensibilite_mp, 2),
-        round(tra_mp * 100, 2),
-        round(coupon_mp * 100, 2)
-
-    ]
-
-})
+stats = pd.DataFrame(
+    {
+        "Indicateur": [
+            "Nombre de lignes",
+            "Encours",
+            "Durée",
+            "Sensibilité",
+            "TRA (%)",
+            "Coupon (%)"
+        ],
+        "Valeur": [
+            len(df),
+            round(encours, 0),
+            round(duration_mp, 2),
+            round(sensibilite_mp, 2),
+            round(tra_mp * 100, 2),
+            round(coupon_mp * 100, 2)
+        ]
+    }
+)
 
 st.dataframe(
     stats,
@@ -376,25 +297,18 @@ st.divider()
 st.subheader("Portefeuille Détaillé")
 
 st.dataframe(
-
     df,
-
     use_container_width=True,
     height=500
-
 )
 
 # =====================================================
-# EXPORTS
+# EXPORT EXCEL
 # =====================================================
 
 st.divider()
 
 st.subheader("Téléchargements")
-
-# -------------------------------
-# Excel
-# -------------------------------
 
 excel_buffer = BytesIO()
 
@@ -430,39 +344,29 @@ with pd.ExcelWriter(
 excel_data = excel_buffer.getvalue()
 
 st.download_button(
-
     label="📊 Télécharger le Rapport Excel",
-
     data=excel_data,
-
     file_name="Rapport_Portefeuille_Obligataire.xlsx",
-
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
 )
 
-# -------------------------------
-# CSV
-# -------------------------------
+# =====================================================
+# EXPORT CSV
+# =====================================================
 
 csv = df.to_csv(
     index=False
 ).encode("utf-8")
 
 st.download_button(
-
     label="📄 Télécharger CSV",
-
     data=csv,
-
     file_name="Portefeuille.csv",
-
     mime="text/csv"
-
 )
 
 # =====================================================
 # FIN
 # =====================================================
 
-st.markdown(
+st.success("Application chargée avec succès.")
